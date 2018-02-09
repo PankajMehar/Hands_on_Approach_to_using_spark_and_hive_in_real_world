@@ -1,0 +1,156 @@
+#### Common instructions for all Hive tasks
+
+In order to not get lost in the details, here is what we want to achieve from a high-level perspective.
+
+Set up small example Hive table within some database.
+Create a virtual environment and upload it to Hive’s distributed cache.
+Write the actual UDAF as Python script and a little helper shell script.
+Write a HiveQL query that feeds our example table into the Python script.
+
+
+### Creating and uploading a virtual environment -- Hive
+In order to prepare a proper virtual environment we need to execute the following steps on an OS that is binary compatible to the OS on the Hive cluster. Typically any recent 64bit Linux distribution will do.
+
+We start by creating an empty virtual environment with:
+
+virtualenv —no-site-packages -p /usr/bin/python3 venv
+
+assuming that virtualenv was already installed with the help of pip. Note that we explicitly ask for Python 3. Who uses Python 2 these days anyhow?
+
+The problem with the activate script of a virtual environment is that its path is hard-coded. We change that by replacing the line
+
+VIRTUAL_ENV="your/path/to/venv"
+with
+
+HERE="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+VIRTUAL_ENV="$( readlink -f "${HERE}/../" )"
+in ./venv/bin/activate. Additionally, we replace in pip the shebang line, i.e. replacing
+
+#!/your/path/to/venv/venv/bin/python3
+with
+
+#!/usr/bin/env python
+This will help us later when we call pip list for debugging reasons.
+
+We activate the virtual environment and install Pandas in it.
+
+source venv/bin/activate
+
+pip install numpy pandas
+
+This should install Pandas and all its dependencies into our virtual environment. No we package the virtual environment for later deployment in the distributed cache:
+
+cd venv
+
+tar cvfhz ../venv.tgz ./
+
+cd ..
+
+Be aware that the archive was created with the actual content at its root so when unpacking there will be no directory holding the actual content. We also used the parameter h to package linked files.
+
+Now we push the archive to HDFS so that later Hive’s data nodes will be able to find it:
+
+hdfs dfs -put venv.tgz /tmp
+
+The directory /tmp should be changed accordingly. One should also note that in principle the same procedure should also be possible with conda environments. In practice though, it might be a bit more involved since the activation of a conda environment (what we need to do later) assumes an installation of at least miniconda which might not be available on the data nodes.
+
+
+
+
+import sys
+import logging
+from itertools import groupby
+from operator import itemgetter
+import numpy as np
+import pandas as pd
+
+SEP = '\t'
+NULL = '\\N'
+
+_logger = logging.getLogger(__name__)
+
+
+def read_input(input_data):
+    for line in input_data:
+        yield line.strip().split(SEP)
+
+
+def main():
+    logging.basicConfig(level=logging.INFO, stream=sys.stderr)
+    data = read_input(sys.stdin)
+    ## TODO: Your function invocation goes here
+    ## print the output don't return it
+
+
+if __name__ == '__main__':
+    main()
+
+
+
+#### Create a bash script to load the virtual environment and the python script
+
+#!/bin/bash
+set -e
+(>&2 echo "Begin of script")
+source ./venv.tgz/bin/activate
+(>&2 echo "Activated venv")
+(>&2 pip list --format=columns --no-cache-dir)
+python udaf.py
+(>&2 echo "End of script")
+
+
+#### Move scripts and udf's to hdfs
+
+
+hdfs dfs -put udaf.py /tmp
+
+hdfs dfs -put udaf.sh /tmp
+
+
+
+DELETE ARCHIVE hdfs:///tmp/venv.tgz;
+ADD ARCHIVE hdfs:///tmp/venv.tgz;
+DELETE FILE hdfs:///tmp/udaf.py;
+ADD FILE hdfs:///tmp/udaf.py;
+DELETE FILE hdfs:///tmp/udaf.sh;
+ADD FILE hdfs:///tmp/udaf.sh;
+
+USE tmp;
+SELECT TRANSFORM(arg1, arg2, arg3) USING 'udaf.sh' AS (arg1 STRING, arg2 FLOAT, arg3 FLOAT)
+  FROM (SELECT * FROM foo CLUSTER BY arg3) AS TEMP_TABLE;
+
+
+
+
+### Assingment 1
+Take any data set and perform a data shuffle and split the data into two parts (90/10 split for training/testing).
+
+### Solution
+
+a = load 'dataset' using PigStorage(',');
+a = foreach a generate RANDOM(), *;
+
+split a into training if $0 <= 0.9, test if $0 > 0.9;
+
+training = group training all;
+training = foreach training generate flatten($1);
+training = foreach training generate $1 ..;
+
+test = group test all;
+test = foreach test generate flatten($1);
+test = foreach test generate $1 ..;
+
+store training into 'training' using PigStorage(',');
+store test into 'test' using PigStorage(',');
+
+
+Notes 
+Project-Range Expressions
+Project-range ( .. ) expressions can be used to project a range of columns from input. For example:
+
+.. $x : projects columns $0 through $x, inclusive
+
+$x .. : projects columns through end, inclusive
+
+$x .. $y : projects columns through $y, inclusive
+

@@ -1,0 +1,30 @@
+### Assignment 4
+# big data - list all google books data links https://gist.github.com/Kroid/d92a242b374043353ea6
+
+Finds word frequencies (probability that a random word is the given word) using the Google Books corpus.
+
+Download data using : 
+- curl http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-1gram-20120701-1.gz -o gb.gz
+- gunzip gb.gz
+
+
+a. Load the word occurrence data
+b. Write a UDF for : Ignore case, combining the occurrences of different capitalizations of the same word ex. "quantity", "Quantity", and "QUANTITY" all get combined    
+c. Write a UDF for : Finding the word frequencies (probability that a random word is the given word) by normalizing the occurrences column against the total number of occurrence
+
+### Solution
+
+For udf's follow the instructions at the very top. Create a seperate python file for each UDF and the UDF's are as follows:
+
+def main():
+    data = read_input(sys.stdin)
+    # grouping by words
+    for group in groupby(data, itemgetter(0)):
+        group = [word, np.nan if occurances == NULL else int(occurances))
+                 for word, occurances in group]
+        df = pd.DataFrame(group, columns=('word', 'occurances'))
+        output = [word, df['occurances'].sum()]
+        print(SEP.join(str(o) for o in output))
+
+SELECT TRANSFORM(word, occurances) USING 'udaf.sh' AS (word STRING, occurances INT)
+  FROM (SELECT * FROM data CLUSTER BY word) AS TEMP_TABLE;

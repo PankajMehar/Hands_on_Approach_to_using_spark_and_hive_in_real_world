@@ -1,0 +1,48 @@
+### Assignment 2
+
+Download data from http://stat-computing.org/dataexpo/2009/the-data.html for year 2007
+
+a. Write a Hive query wich imports the data and filters out all the delayed flights.
+b. Write a UDF to find out the hour of departure from the field CRSDepTime
+c. Write a UDF to find out the days from the nearest holiday for the date(Year, Month, DayOfMonth) fields.
+
+Note : treat the following dates as holidays
+    
+holidays = [
+        date(2007, 1, 1), date(2007, 1, 15), date(2007, 2, 19), date(2007, 5, 28), date(2007, 6, 7), date(2007, 7, 4), \
+        date(2007, 9, 3), date(2007, 10, 8), date(2007, 11, 11), date(2007, 11, 22), date(2007, 12, 25)]
+
+### Solution
+
+ CREATE EXTERNAL TABLE IF NOT EXISTS data(
+    > Year INT, Month INT, DayOfMonth INT, DayOfWeek INT, DepTime STRING, CRSDepTime STRING, 
+    > ArrTime timestamp, CRSArrTime timestamp, Carrier STRING, FlightNum STRING, TailNum STRING, 
+    > ActualElapsedTime timestamp, CRSElapsedTime timestamp, AirTime STRING, ArrDelay STRIN, DepDelay INT,
+    >  Origin STRING, Dest STRING, Distance INT, TaxiIn STRING, TaxiOut STRING, Cancelled INT, CancellationCode STRING, Diverted STRING, 
+    > CarrierDelay STRING, WeatherDelay STRING, NASDelay STRING, SecurityDelay STRING, LateAircraftDelay STRING)
+    > COMMENT 'Flight Data'
+    > ROW FORMAT DELIMITED
+    > FIELDS TERMINATED BY ','
+    > STORED AS TEXTFILE
+    > LOCATION '/user/username/flightdata.csv';
+    
+### Note the difference wrt PIG in loading data all datatypes have to be provided.
+
+### You can store the file in other types like:
+
+- Text file : All data are stored as raw text using the Unicode standard.
+
+- Sequence file : The data are stored as binary key/value pairs.
+
+- RCFile : All data are stored in a column optimized format (instead of row optimized).
+
+- ORC : An optimized row columnar format that can significantly improve Hive performance.
+
+- Parquet : A columnar format that provides portability to other Hadoop tools including Hive, Drill, Impala, Crunch, and Pig.
+
+
+Create another table named mydata with same schema but change STORED AS TEXTFILE and remove location.
+
+INSERT OVERWRITE TABLE mydata SELECT * FROM data;
+
+This is an easy and fast way to convert your data in parallel to columnar storage.

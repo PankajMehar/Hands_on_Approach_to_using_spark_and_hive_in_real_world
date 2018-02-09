@@ -1,0 +1,24 @@
+### Assignment 3
+# big data - list all google books data links https://gist.github.com/Kroid/d92a242b374043353ea6
+
+Finds word frequencies (probability that a random word is the given word) using the Google Books corpus.
+
+Download data using : 
+- curl http://storage.googleapis.com/books/ngrams/books/googlebooks-eng-all-1gram-20120701-1.gz -o gb.gz
+- gunzip gb.gz
+
+
+a. Load the word occurrence data
+b. Write a UDF for : Ignore case, combining the occurrences of different capitalizations of the same word ex. "quantity", "Quantity", and "QUANTITY" all get combined    
+c. Write a UDF for : Finding the word frequencies (probability that a random word is the given word) by normalizing the occurrences column against the total number of occurrence
+
+### Solution
+
+val data = spark.read.csv("""worddata.csv""")
+
+
+val frequency = data.withColumn("transformed_word", lower_udf($"word"))
+    .groupBy('transformed_word').count()
+
+val total_words = frequency.groupBy($"transformed_word").count().select("count").groupBy().sum().collect()(0).getLong(0)
+val prob = frequency.withColumn('probability', $"count"/total_words)

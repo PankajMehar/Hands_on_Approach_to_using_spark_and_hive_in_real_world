@@ -1,0 +1,13 @@
+### Assingment 1
+Take any data set and perform a data shuffle and split the data into two parts (90/10 split for training/testing).
+
+### Solution
+using randomSplit function
+weights = [.8, .2]
+seed = 42 
+# Use randomSplit with weights and seed
+rawTrainData, rawTestData = data.randomSplit(weights, seed)
+
+or 
+
+val Array(training, test) = data.randomSplit(Array(0.9, 0.1))

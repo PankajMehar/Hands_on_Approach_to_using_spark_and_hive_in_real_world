@@ -1,0 +1,9 @@
+### Assingment 3 Natural Language Processing, Text Processing
+
+
+Get data from https://www.kaggle.com/zynicide/wine-reviews/data
+From the wine data find the top 5 words used to describe each wine for each country.
+Note: You should write Python UDF/UADF for NLP proceessing.
+
+## Solution
+Function implementation remains the same just the process for Hive deployment is different as discussed above.
